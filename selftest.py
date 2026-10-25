@@ -22,6 +22,6 @@ for mode in ("fast", "balanced", "safe"):
         for _ in range(40):
             y = e.process(rng.standard_normal(e.hop).astype(np.float32) * 0.1)
             assert y.shape == (e.hop,) and y.dtype == np.float32 and np.all(np.isfinite(y)), (mode, name)
-            assert np.max(np.abs(y)) <= 1.01, "limiter failed"
+            assert np.max(np.abs(y)) <= 1.0001, "limiter failed"
     print(mode, "ok | latency ~", round(e.latency_samples / engine.SR * 1000), "ms")
 print("SELFTEST OK")

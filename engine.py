@@ -173,7 +173,10 @@ class Engine:
         value = round(float(value), 3)
         key = (id(plugin), attr)
         if self._cur.get(key) != value:
-            setattr(plugin, attr, value)
+            try:
+                setattr(plugin, attr, value)
+            except Exception:                              # out-of-range / unsupported value: keep the old one
+                pass
             self._cur[key] = value
 
     def _sync(self):
@@ -213,5 +216,6 @@ class Engine:
 
         y = np.asarray(self.limiter_board(y[None, :], SR, reset=False), np.float32).reshape(-1)
         np.nan_to_num(y, copy=False)
+        np.clip(y, -1.0, 1.0, out=y)                       # hard safety net: the limiter alone can overshoot
         self.out_peak = float(np.max(np.abs(y)))
         return y

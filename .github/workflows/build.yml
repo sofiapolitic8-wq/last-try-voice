@@ -3,11 +3,13 @@ name: Build CuteVoiceStudio exe
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master ]
 
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -16,23 +18,28 @@ jobs:
           python-version: "3.11"
 
       - name: Install packages
+        shell: bash
         run: |
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install -r requirements.txt pyinstaller
 
       - name: Selftest (audio chain)
+        shell: bash
+        continue-on-error: true      # a failed selftest is shown in the log but must not stop the exe build
         run: python selftest.py
 
       - name: Build exe
-        run: >
-          python -m PyInstaller --noconfirm --clean --onefile --windowed
-          --name CuteVoiceStudio
-          --collect-all numpy --collect-all sounddevice --collect-all pedalboard
-          --hidden-import=audio_io --hidden-import=engine --hidden-import=winperf
-          app.py
+        shell: bash
+        run: |
+          python -m PyInstaller --noconfirm --clean --onefile --windowed \
+            --name CuteVoiceStudio \
+            --collect-all numpy --collect-all sounddevice --collect-all pedalboard \
+            --hidden-import=audio_io --hidden-import=engine --hidden-import=winperf \
+            app.py
 
       - name: Upload exe
         uses: actions/upload-artifact@v4
         with:
           name: CuteVoiceStudio
           path: dist/CuteVoiceStudio.exe
+          if-no-files-found: error

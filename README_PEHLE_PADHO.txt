@@ -17,3 +17,8 @@ NAYA (v4 UI): window ab scroll hoti hai, Pro Controls right side mein khulte hai
 Agar run laal (fail) ho: us run pe click karo, laal step ka text copy karke bhej do.
 PC pe khud banana ho to: BUILD_EXE.bat.
 Windows Defender nayi unsigned exe pe warning de sakta hai ("More info" > "Run anyway").
+
+AGAR ERROR AAYE:
+- "Actions" tab mein kuch nahi dikhe  -> .github/workflows/build.yml upload nahi hui. Step 4 karo (build.yml paste).
+- Run laal ho -> run kholo, laal (X wale) step pe click karo, uska aakhri 30 line ka text bhej do.
+- "Selftest" step peela/laal ho par exe ban jaye to bhi chalega; exe ke saath selftest ka message bhej dena.

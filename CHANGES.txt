@@ -37,7 +37,6 @@ NOTE
    - Timbre = bass/treble tilt (pedalboard mein formant shift nahi hota).
    - PitchShift ka apna delay hai -> total delay pehle se zyada; kam chahiye to "Fast" buffer chuno.
    - Vibrato/Chorus ki awaaz kaan se tune karni padegi; Vibrato ke liye 8 ms extra delay chain mein hai.
-<<<<<<< HEAD
 
 ----------------------------------------------------------------------
 V4.1 FIXES (Hear / monitor / Voice OUT)
@@ -51,5 +50,3 @@ V4.1 FIXES (Hear / monitor / Voice OUT)
 4) Galat Voice OUT: Voice OUT sirf virtual cable (CABLE Input / VB-Audio / VoiceMeeter) ho sakta hai.
    Asli speaker/headphone chunne par START refuse (auto-start par bhi), list mein sirf cable devices aati
    hain, aur Monitor list mein cable devices nahi aate.
-=======
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91

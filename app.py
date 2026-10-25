@@ -47,11 +47,7 @@ import numpy as np                                   # noqa: E402,F401
 import audio_io                                      # noqa: E402
 import winperf                                       # noqa: E402
 from audio_io import (Router, BUFFERS, DEFAULT_BUFFER, API_ORDER, collect_devices, find_equivalent,  # noqa: E402
-<<<<<<< HEAD
                       hostapis, is_cable_input, is_virtual_output, label_name, reinit_portaudio)
-=======
-                      hostapis, is_cable_input, label_name, reinit_portaudio)
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
 from engine import Engine                            # noqa: E402
 
 AUTO_API = "Auto (best)"
@@ -231,10 +227,7 @@ class App(tk.Tk):
         self.last_drop_count = 0
         self.last_drop_time = 0.0
         self._mon_busy = False                  # a Hear on/off request is being handled
-<<<<<<< HEAD
         self._mon_gen = 0                       # bumped on START / STOP: results of older Hear requests are ignored
-=======
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
         self._mon_q = queue.Queue()             # results from the monitor worker thread -> Tk thread
         self.saved = self.load_settings()
 
@@ -399,14 +392,9 @@ class App(tk.Tk):
                                              cable=label_name(self.cable_box.get()) if self.cable_box.get() else "",
                                              monitor_dev=label_name(self.mon_box.get()) if self.mon_box.get() else "")
         self.ins, self.outs = collect_devices(api_idx)
-<<<<<<< HEAD
         virt = [(i, l) for i, l in self.outs if is_virtual_output(label_name(l))]
         self.cable_outs = virt if virt else list(self.outs)      # real speakers are never offered as Voice OUT
         self.mon_outs = [(None, "(none)")] + [(i, l) for i, l in self.outs if not is_virtual_output(label_name(l))]
-=======
-        self.cable_outs = list(self.outs)
-        self.mon_outs = [(None, "(none)")] + [(i, l) for i, l in self.outs if not is_cable_input(label_name(l))]
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
         def_in = apis[api_idx]["default_input_device"]
         def_out = apis[api_idx]["default_output_device"]
         self._fill(self.in_box, self.ins, keep.get("mic"), lambda l: l.startswith(f"{def_in}:"))
@@ -416,11 +404,7 @@ class App(tk.Tk):
             cable_pref = lambda l: is_cable_input(label_name(l))                 # noqa: E731
         self._fill(self.cable_box, self.cable_outs, keep.get("cable"), cable_pref)
         self._fill(self.mon_box, self.mon_outs, keep.get("monitor_dev"), lambda l: l.startswith(f"{def_out}:"))
-<<<<<<< HEAD
         self.cable_found = bool(virt)
-=======
-        self.cable_found = any(is_cable_input(label_name(l)) for _, l in self.cable_outs)
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
         if self.cable_found:
             self.cable_status.config(fg=OK, text="OK: VB-Cable mila. WhatsApp / OBS mein mic = 'CABLE Output (VB-Audio Virtual Cable)'.")
         else:
@@ -654,11 +638,7 @@ class App(tk.Tk):
             self._monitor_done(want, False, str(ex))
             return
         self._mon_busy = True
-<<<<<<< HEAD
         router, gen = self.router, self._mon_gen
-=======
-        router = self.router
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
 
         def work():
             try:
@@ -666,24 +646,16 @@ class App(tk.Tk):
             except Exception as ex:                         # never let the worker die silently
                 log(f"monitor worker failed: {ex}\n{traceback.format_exc()}")
                 ok, msg = False, str(ex)
-<<<<<<< HEAD
             self._mon_q.put((gen, router, want, ok, msg))
-=======
-            self._mon_q.put((want, ok, msg))
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
 
         threading.Thread(target=work, name="cv-monitor", daemon=True).start()
 
     def _poll_monitor(self):
         try:
             while True:
-<<<<<<< HEAD
                 gen, router, want, ok, msg = self._mon_q.get_nowait()
                 if gen != self._mon_gen or router is not self.router:
                     continue                                # old request (STOP / new START happened): ignore
-=======
-                want, ok, msg = self._mon_q.get_nowait()
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
                 self._monitor_done(want, ok, msg)
         except queue.Empty:
             pass
@@ -696,11 +668,8 @@ class App(tk.Tk):
             if want:
                 messagebox.showwarning("Hear myself", msg)
             want = False                                    # on failed -> OFF; off failed -> treat as OFF
-<<<<<<< HEAD
         if self.router is not None:                         # the router's real state is the truth
             want = bool(self.router.monitor_enabled)
-=======
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
         self.monitor_wanted = want
         self.update_monitor_btn()
         # Persist the toggle immediately so the next launch matches the visible OFF/ON state.
@@ -718,7 +687,6 @@ class App(tk.Tk):
         if audio_io.sd is None:
             messagebox.showerror("Audio", f"PortAudio / sounddevice load nahi hua:\n{audio_io.SD_ERROR}\n\nSETUP.bat dobara chalao.")
             return False
-<<<<<<< HEAD
         # Voice OUT must be a virtual cable.  Starting with a real speaker / headphone selected would play
         # the processed voice out loud, so START is refused (also for auto-start).
         sel_cable = label_name(self.cable_box.get()) if self.cable_box.get() else ""
@@ -732,29 +700,13 @@ class App(tk.Tk):
             else:
                 self.status.config(text="Voice OUT galat / cable nahi - START nahi hua", fg=BAD)
             return False
-=======
-        if not self.cable_found and not silent:
-            if not messagebox.askyesno("Cable", "VB-Cable nahi mila - WhatsApp/OBS ko voice nahi milegi.\n\nPhir bhi START karein?"):
-                return False
-        elif not self.cable_found:
-            return False
-        if "cable input" not in self.cable_box.get().lower() and not is_cable_input(label_name(self.cable_box.get())) and not silent:
-            if not messagebox.askyesno("Cable output", "Voice OUT -> Cable mein 'CABLE Input' select nahi hai.\n"
-                                                       "Aisa karne par WhatsApp/OBS ko voice nahi milegi.\n\nPhir bhi START karein?"):
-                return False
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
         errors = []
         for api in self.candidate_apis():
             router = None
             try:
                 in_dev, cab_dev, mon_dev = self.devices_for(api)
                 router = Router(self.engine, self.buf_box.get())
-<<<<<<< HEAD
                 router.start(api, in_dev, cab_dev, mon_dev, monitor=self.monitor_wanted)
-=======
-                router.monitor_enabled = self.monitor_wanted
-                router.start(api, in_dev, cab_dev, mon_dev)
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
             except Exception as ex:
                 log(f"start failed on {api}: {ex}\n{traceback.format_exc()}")
                 errors.append(f"{api}: {ex}")
@@ -765,19 +717,12 @@ class App(tk.Tk):
                         pass
                 continue
             self.router, self.active_api = router, api
-<<<<<<< HEAD
             self._mon_gen += 1                             # results of requests for an older router are ignored
             self._mon_busy = False
             self.monitor_wanted = bool(router.monitor_enabled)      # show what really happened, not what was wished
             self.update_monitor_btn()
             if router.monitor_error:                       # headphones could not be opened: stay OFF
                 log(f"monitor: {router.monitor_error}")
-=======
-            if router.monitor_error:                       # headphones could not be opened: stay OFF
-                log(f"monitor: {router.monitor_error}")
-                self.monitor_wanted = False
-                self.update_monitor_btn()
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
                 if not silent:
                     messagebox.showwarning("Hear myself", router.monitor_error)
             self.last_drop_count, self.last_drop_time = 0, 0.0
@@ -795,11 +740,8 @@ class App(tk.Tk):
         return False
 
     def stop_stream(self):
-<<<<<<< HEAD
         self._mon_gen += 1                                  # any Hear request still running is now stale
         self._mon_busy = False
-=======
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
         if self.router is not None:
             self.router.stop()
             self.router = None

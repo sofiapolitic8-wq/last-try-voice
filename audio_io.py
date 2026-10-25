@@ -66,10 +66,7 @@ class Ring:
         self.underruns = 0
         self.trims = 0
         self.fill_avg = 0.0
-<<<<<<< HEAD
         self.active = True                 # False: callback gets silence, writes are ignored
-=======
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
         self.lock = threading.Lock()
 
     @property
@@ -82,7 +79,6 @@ class Ring:
             self.primed = False
             self.extra = 0
 
-<<<<<<< HEAD
     def set_active(self, flag):
         """Switch the ring on/off.  Off = the audio callback instantly gets silence (even if it is
         running right now) and the producer's writes are dropped; leftovers are always discarded."""
@@ -93,18 +89,13 @@ class Ring:
             self.extra = 0
             self.fill_avg = 0.0
 
-=======
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
     # ---- producer
     def write(self, x):
         x = np.asarray(x, np.float32)
         L = len(x)
         with self.lock:
-<<<<<<< HEAD
             if not self.active:
                 return
-=======
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
             if L > self.cap:
                 x, L = x[-self.cap:], self.cap
             over = self.n + L - self.cap
@@ -135,11 +126,8 @@ class Ring:
 
     def read(self, k):
         with self.lock:
-<<<<<<< HEAD
             if not self.active:                           # monitor switched OFF: never replay buffered audio
                 return np.zeros(k, np.float32)
-=======
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
             if k > self.out_seen:
                 self.out_seen = k
             target = self.target
@@ -223,10 +211,7 @@ class Router:
         cap = self.chunk * 32
         self.cable_ring = Ring(self.chunk, margin, cap)
         self.mon_ring = Ring(self.chunk, margin, cap)
-<<<<<<< HEAD
         self.mon_ring.active = False                   # headphone ring is silent until a monitor stream is really open
-=======
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
         self.q = queue.Queue(maxsize=128)
         self.monitor_enabled = False
         self.running = False
@@ -242,12 +227,9 @@ class Router:
         # one lock serialises start / stop / monitor on/off (all called from the GUI thread, but a
         # double-click or auto-fix must never interleave them)
         self._lock = threading.RLock()
-<<<<<<< HEAD
         self._seq_lock = threading.Lock()
         self._mon_seq = 0                # every Hear request / stop() bumps this; an older request that was
                                          # still waiting for the lock sees the change and does nothing
-=======
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
         self._mon_stream = None
         self._kw = None
         self.cable_dev = None
@@ -306,19 +288,17 @@ class Router:
                     self.error = None
                 except Exception:
                     if self.error is None:
-                        traceback.print_exc()
+                        try:
+                            traceback.print_exc()          # windowed exe has no console: must never raise
+                        except Exception:
+                            pass
                     self.error = "Engine error (cutevoice.log dekho)"
                     y = np.zeros(len(c), np.float32)          # never leak the raw voice
                 dt = (time.perf_counter() - t0) * 1000.0
                 self.proc_ms += (dt - self.proc_ms) * 0.05
                 self.cable_ring.write(y)
-<<<<<<< HEAD
                 if self.monitor_enabled:
                     self.mon_ring.write(y)               # ring ignores it unless the monitor stream is open
-=======
-                if self.monitor_enabled and self._mon_stream is not None:
-                    self.mon_ring.write(y)
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
                 if self.engine.peak > 0.0:
                     self.heard_signal = True
 
@@ -327,19 +307,14 @@ class Router:
     def _out_channels(dev):
         return 2 if sd.query_devices(dev)["max_output_channels"] >= 2 else 1
 
-<<<<<<< HEAD
     def start(self, api_name, in_dev, cable_dev, mon_dev, monitor=False):
         """`monitor` = the person wants Hear-myself ON.  monitor_enabled only becomes True after the
         headphone stream has really been opened (see set_monitor) - never before."""
-=======
-    def start(self, api_name, in_dev, cable_dev, mon_dev):
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
         if sd is None:
             raise RuntimeError(f"PortAudio / sounddevice load nahi hua: {SD_ERROR}")
         with self._lock:
             if self.running:
                 return                                   # never open a second set of streams
-<<<<<<< HEAD
             self.monitor_enabled = False
             self.mon_ring.set_active(False)
             # Voice OUT must be a virtual cable.  A real speaker / headphone here would play the
@@ -353,8 +328,6 @@ class Router:
                     f"Voice OUT galat hai: '{cable_name}' asli speaker/headphone hai.\n"
                     "Voice OUT -> Cable mein 'CABLE Input (VB-Audio Virtual Cable)' chuno. "
                     "Headphone mein khud sunne ke liye 'Hear myself' use karo.")
-=======
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
             extra = None
             if "WASAPI" in api_name and hasattr(sd, "WasapiSettings"):
                 try:
@@ -395,17 +368,12 @@ class Router:
                 self.stop()
                 raise
             # headphone monitor is its own stream, opened only while "Hear myself" is ON
-<<<<<<< HEAD
             if monitor:
-=======
-            if self.monitor_enabled:
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
                 ok, msg = self.set_monitor(True, mon_dev)
                 if not ok:
                     self.monitor_error = msg
 
     def set_monitor(self, enabled, mon_dev=None):
-<<<<<<< HEAD
         """Hear myself ON/OFF.  Returns (ok, message).  ON opens one headphone stream, OFF closes it.
 
         Race safety:
@@ -443,29 +411,6 @@ class Router:
             if self._mon_stream is not None and self.monitor_enabled:      # already on
                 return True, ""
             self._monitor_off()                          # clean slate: no old stream, silent empty ring
-=======
-        """Hear myself ON/OFF.  Returns (ok, message).  ON opens one headphone stream, OFF closes it,
-        so there is never a second / ghost stream and no stale audio is replayed on re-enable."""
-        with self._lock:
-            if not enabled:
-                self.monitor_enabled = False             # worker stops feeding first ...
-                self._close_monitor()                    # ... then the stream goes away ...
-                self.mon_ring.clear()                    # ... then the leftovers are dropped
-                return True, ""
-            if not self.running:
-                self.monitor_enabled = False
-                return False, "Pehle START dabao."
-            if mon_dev is None:
-                self.monitor_enabled = False
-                return False, "Monitor (Headphones) device select karo."
-            if mon_dev == self.cable_dev:
-                self.monitor_enabled = False
-                return False, "Monitor device cable wala nahi ho sakta - headphones select karo."
-            if self._mon_stream is not None:             # already on
-                self.monitor_enabled = True
-                return True, ""
-            self.mon_ring.clear()
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
             stream = None
             try:
                 m = self._out_channels(mon_dev)
@@ -478,7 +423,6 @@ class Router:
                         stream.close()
                     except Exception:
                         pass
-<<<<<<< HEAD
                 self._monitor_off()
                 return False, f"Monitor start nahi hua: {ex}"
             self._mon_stream = stream
@@ -492,14 +436,6 @@ class Router:
         self.mon_ring.set_active(False)
         self._close_monitor()
 
-=======
-                self.monitor_enabled = False
-                return False, f"Monitor start nahi hua: {ex}"
-            self._mon_stream = stream
-            self.monitor_enabled = True
-            return True, ""
-
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
     def _close_monitor(self):
         s, self._mon_stream = self._mon_stream, None
         if s is not None:
@@ -513,18 +449,12 @@ class Router:
                 pass
 
     def stop(self):
-<<<<<<< HEAD
         with self._seq_lock:
             self._mon_seq += 1                           # cancels any Hear request still waiting
         with self._lock:
             self.running = False
             self.monitor_enabled = False
             self.mon_ring.set_active(False)
-=======
-        with self._lock:
-            self.running = False
-            self.monitor_enabled = False
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
             # 1) worker first (nothing writes into the rings any more) ...
             t, self.thread = self.thread, None
             if t is not None and t is not threading.current_thread():
@@ -543,11 +473,7 @@ class Router:
             self.streams = []
             # 3) ... then reset the buffers
             self.cable_ring.clear()
-<<<<<<< HEAD
             self.mon_ring.set_active(False)
-=======
-            self.mon_ring.clear()
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
             while True:
                 try:
                     self.q.get_nowait()
@@ -584,7 +510,6 @@ def is_cable_input(name):
     return "cable" in n and ("input" in n or "cable in" in n)
 
 
-<<<<<<< HEAD
 def is_virtual_output(name):
     """True only for virtual-cable style playback devices (VB-CABLE, VoiceMeeter ...).
     A real speaker / headphone must NEVER be used as 'Voice OUT'."""
@@ -592,8 +517,6 @@ def is_virtual_output(name):
     return is_cable_input(name) or "vb-audio" in n or "voicemeeter" in n
 
 
-=======
->>>>>>> 51c9f0a125dfdfe50c639f293a16d0fb5b2afe91
 def hostapis():
     return [a["name"] for a in sd.query_hostapis()]
 
