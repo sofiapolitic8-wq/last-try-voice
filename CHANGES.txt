@@ -50,3 +50,13 @@ V4.1 FIXES (Hear / monitor / Voice OUT)
 4) Galat Voice OUT: Voice OUT sirf virtual cable (CABLE Input / VB-Audio / VoiceMeeter) ho sakta hai.
    Asli speaker/headphone chunne par START refuse (auto-start par bhi), list mein sirf cable devices aati
    hain, aur Monitor list mein cable devices nahi aate.
+
+V4.2 - "Monitor start nahi hua ... WdmSyncIoctl ... WDM-KS" FIX
+- Hear myself ab pehle chuna hua headphone device kholta hai; fail ho to wahi headphone dusre audio system
+  (WASAPI -> DirectSound -> MME) par try hota hai. WDM-KS kabhi use nahi hota (exclusive mode, Realtek par fail).
+- WDM-KS 'Audio system' list se hata diya; purani settings mein WDM-KS ho to Auto ban jata hai.
+- Mic / Voice OUT WDM-KS par ho to START saaf message ke saath refuse (aur agla audio system try hota hai).
+- WASAPI auto-convert ab sirf WASAPI devices par lagta hai (har device ke hisaab se).
+- Error message mein ab audio system ka naam aur device number aata hai.
+SOUND KAHAN SUNAI DETI HAI: processed awaaz sirf 'CABLE Output' se nikalti hai (Discord/WhatsApp/OBS mic).
+Khud sunne ke liye 'Hear myself: ON' ya Windows Sound > Recording > CABLE Output > Properties > Listen.

@@ -231,7 +231,7 @@ class Router:
         self._mon_seq = 0                # every Hear request / stop() bumps this; an older request that was
                                          # still waiting for the lock sees the change and does nothing
         self._mon_stream = None
-        self._kw = None
+        self._kw_base = dict(samplerate=SR, blocksize=0, dtype="float32", latency="low")
         self.cable_dev = None
         self.monitor_error = None
 
@@ -304,6 +304,23 @@ class Router:
 
     # ---- control
     @staticmethod
+    def _api_name(dev):
+        try:
+            return sd.query_hostapis(sd.query_devices(dev)["hostapi"])["name"]
+        except Exception:
+            return ""
+
+    def _kw_for(self, dev):
+        """Stream settings for one device: WASAPI shared-mode auto-convert only on WASAPI devices."""
+        kw = dict(self._kw_base)
+        if "WASAPI" in self._api_name(dev) and hasattr(sd, "WasapiSettings"):
+            try:
+                kw["extra_settings"] = sd.WasapiSettings(auto_convert=True)
+            except TypeError:
+                pass
+        return kw
+
+    @staticmethod
     def _out_channels(dev):
         return 2 if sd.query_devices(dev)["max_output_channels"] >= 2 else 1
 
@@ -328,16 +345,10 @@ class Router:
                     f"Voice OUT galat hai: '{cable_name}' asli speaker/headphone hai.\n"
                     "Voice OUT -> Cable mein 'CABLE Input (VB-Audio Virtual Cable)' chuno. "
                     "Headphone mein khud sunne ke liye 'Hear myself' use karo.")
-            extra = None
-            if "WASAPI" in api_name and hasattr(sd, "WasapiSettings"):
-                try:
-                    extra = sd.WasapiSettings(auto_convert=True)
-                except TypeError:
-                    extra = None
-            kw = dict(samplerate=SR, blocksize=0, dtype="float32", latency="low")
-            if extra is not None:
-                kw["extra_settings"] = extra
-            self._kw = kw
+            for d, what in ((in_dev, "Mic"), (cable_dev, "Voice OUT")):
+                if "wdm" in self._api_name(d).lower():
+                    raise RuntimeError(f"{what} WDM-KS audio system par hai (exclusive, aawaaz nahi aati). "
+                                       "Audio system mein WASAPI / DirectSound / MME chuno.")
             self.cable_dev = cable_dev
 
             warm_up(self.engine, self.chunk)
@@ -348,15 +359,15 @@ class Router:
             self.monitor_error = None
             try:
                 try:
-                    s_in = sd.InputStream(device=in_dev, channels=1, callback=self._in_cb, **kw)
+                    s_in = sd.InputStream(device=in_dev, channels=1, callback=self._in_cb, **self._kw_for(in_dev))
                 except Exception:
                     ch = min(2, max(1, sd.query_devices(in_dev)["max_input_channels"]))
-                    s_in = sd.InputStream(device=in_dev, channels=ch, callback=self._in_cb, **kw)
+                    s_in = sd.InputStream(device=in_dev, channels=ch, callback=self._in_cb, **self._kw_for(in_dev))
                 self.streams.append(s_in)
 
                 c = self._out_channels(cable_dev)
                 s_cab = sd.OutputStream(device=cable_dev, channels=c,
-                                        callback=self._out_cb_factory(self.cable_ring, c), **kw)
+                                        callback=self._out_cb_factory(self.cable_ring, c), **self._kw_for(cable_dev))
                 self.streams.append(s_cab)
                 self.dev_latency = float(s_in.latency) + float(s_cab.latency)
                 self.running = True
@@ -411,24 +422,49 @@ class Router:
             if self._mon_stream is not None and self.monitor_enabled:      # already on
                 return True, ""
             self._monitor_off()                          # clean slate: no old stream, silent empty ring
-            stream = None
-            try:
-                m = self._out_channels(mon_dev)
-                stream = sd.OutputStream(device=mon_dev, channels=m,
-                                         callback=self._out_cb_factory(self.mon_ring, m), **self._kw)
-                stream.start()
-            except Exception as ex:
-                if stream is not None:
-                    try:
-                        stream.close()
-                    except Exception:
-                        pass
+            stream, last_err = None, None
+            for dev in self._monitor_candidates(mon_dev):
+                s = None
+                try:
+                    m = self._out_channels(dev)
+                    s = sd.OutputStream(device=dev, channels=m,
+                                        callback=self._out_cb_factory(self.mon_ring, m), **self._kw_for(dev))
+                    s.start()
+                    stream = s
+                    break
+                except Exception as ex:
+                    last_err = f"{self._api_name(dev) or '?'} [{dev}]: {ex}"
+                    if s is not None:
+                        try:
+                            s.close()
+                        except Exception:
+                            pass
+            if stream is None:
                 self._monitor_off()
-                return False, f"Monitor start nahi hua: {ex}"
+                return False, f"Monitor start nahi hua (kisi bhi audio system par nahi khula).\n{last_err}"
             self._mon_stream = stream
             self.mon_ring.set_active(True)               # only now may audio flow to the headphones
             self.monitor_enabled = True
             return True, ""
+
+    def _monitor_candidates(self, mon_dev):
+        """The chosen headphone device first, then the same physical device on the other host APIs
+        (WASAPI -> DirectSound -> MME).  WDM-KS is never used: it is exclusive and often fails to open."""
+        cands = []
+        try:
+            name = sd.query_devices(mon_dev)["name"]
+            if "wdm" not in self._api_name(mon_dev).lower():
+                cands.append(mon_dev)
+            apis = hostapis()
+            for key in API_ORDER:
+                for idx, nm in enumerate(apis):
+                    if key.lower() in nm.lower():
+                        d = find_equivalent(name, idx, False)
+                        if d is not None and d not in cands and not is_virtual_output(sd.query_devices(d)["name"]):
+                            cands.append(d)
+        except Exception:
+            pass
+        return cands or [mon_dev]
 
     def _monitor_off(self):
         """Caller holds self._lock.  Order matters: stop feeding -> silence ring -> close stream."""
@@ -519,6 +555,11 @@ def is_virtual_output(name):
 
 def hostapis():
     return [a["name"] for a in sd.query_hostapis()]
+
+
+def usable_hostapis():
+    """Host APIs the app may use (WDM-KS is exclusive-mode and breaks routing -> never offered)."""
+    return [n for n in hostapis() if "wdm" not in n.lower()]
 
 
 def collect_devices(api_idx):

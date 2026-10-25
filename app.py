@@ -47,7 +47,8 @@ import numpy as np                                   # noqa: E402,F401
 import audio_io                                      # noqa: E402
 import winperf                                       # noqa: E402
 from audio_io import (Router, BUFFERS, DEFAULT_BUFFER, API_ORDER, collect_devices, find_equivalent,  # noqa: E402
-                      hostapis, is_cable_input, is_virtual_output, label_name, reinit_portaudio)
+                      hostapis, is_cable_input, is_virtual_output, label_name, reinit_portaudio,
+                      usable_hostapis)
 from engine import Engine                            # noqa: E402
 
 AUTO_API = "Auto (best)"
@@ -210,7 +211,7 @@ class Toggle(tk.Canvas):
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("CuteVoice Studio v3 - Real-time Voice Changer")
+        self.title("CuteVoice Studio v4 - Real-time Voice Changer")
         self.configure(bg=BG)
         self.resizable(True, True)
         self.build_scroll_area()
@@ -308,7 +309,7 @@ class App(tk.Tk):
         def lbl(text, r):
             tk.Label(f, text=text, bg=PANEL, fg=FG).grid(row=r, column=0, sticky="w", pady=3)
 
-        apis = [AUTO_API] + hostapis()
+        apis = [AUTO_API] + usable_hostapis()
         lbl("Audio system", 0)
         self.api_box = ttk.Combobox(f, state="readonly", width=64, values=apis)
         self.api_box.grid(row=0, column=1, padx=8)
@@ -375,7 +376,7 @@ class App(tk.Tk):
     def effective_api(self):
         names = hostapis()
         sel = self.api_box.get()
-        if sel in names:
+        if sel in names and "wdm" not in sel.lower():
             return sel
         for key in API_ORDER:
             for nm in names:
@@ -586,7 +587,7 @@ class App(tk.Tk):
     def candidate_apis(self):
         names = hostapis()
         sel = self.api_box.get()
-        if sel in names:
+        if sel in names and "wdm" not in sel.lower():
             return [sel]                         # user forced one system: do not silently switch
         order = []
         for key in API_ORDER:
@@ -758,7 +759,7 @@ class App(tk.Tk):
         """Re-scan audio devices, go back to safe defaults, and restart the stream."""
         self.stop_stream()
         reinit_portaudio()
-        apis = [AUTO_API] + hostapis()
+        apis = [AUTO_API] + usable_hostapis()
         self.api_box["values"] = apis
         self.api_box.set(AUTO_API)
         self.buf_box.set(DEFAULT_BUFFER)
